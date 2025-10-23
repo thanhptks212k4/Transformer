@@ -1,99 +1,84 @@
-Transformer for English-Vietnamese Translation
-PyTorch implementation of Transformer model for machine translation from English to Vietnamese.
+Transformer for English–Vietnamese Translation
 
-Chi tiết Cơ chế Transformer
-1. Kiến trúc Tổng thể
-Transformer sử dụng kiến trúc encoder-decoder hoàn toàn dựa trên cơ chế attention:
+PyTorch implementation of a Transformer model for machine translation from English to Vietnamese.
 
-text
+🔍 Giới thiệu
+
+Dự án này hiện thực hóa mô hình Transformer — một kiến trúc dựa hoàn toàn trên cơ chế Attention — để dịch câu từ tiếng Anh sang tiếng Việt.
+Mô hình được xây dựng từ đầu bằng PyTorch, bao gồm đầy đủ các thành phần: Encoder, Decoder, Positional Encoding, Multi-Head Attention và cơ chế Masking trong quá trình huấn luyện và dịch tự động.
+
+🧠 Kiến trúc Transformer
+1. Kiến trúc tổng thể
+
+Transformer hoạt động theo mô hình encoder–decoder, trong đó:
+
+Encoder mã hóa câu nguồn (tiếng Anh) thành các vector ngữ nghĩa.
+
+Decoder giải mã các vector này để sinh ra câu đích (tiếng Việt).
+
+Quy trình tổng quát:
 Input → Token Embedding → Positional Encoding → Encoder Stack → Decoder Stack → Output
+
 2. Multi-Head Attention
-Công thức cơ bản:
 
-text
-Attention(Q, K, V) = softmax(QKᵀ/√dₖ)V
-Multi-Head:
-
-python
-# Trong code:
-encoder_layer = nn.TransformerEncoderLayer(
-    d_model=128,        # embedding dimension
-    nhead=4,            # 4 attention heads
-    dim_feedforward=512,
-    dropout=0.1,
-    batch_first=True
-)
-Mỗi head học các representation khác nhau:
+Cơ chế Attention cho phép mô hình tập trung vào các phần quan trọng của câu ở mọi vị trí.
+Với Multi-Head Attention, mỗi "head" học một khía cạnh khác nhau của ngữ cảnh:
 
 Head 1: Quan hệ ngữ pháp
 
 Head 2: Quan hệ ngữ nghĩa
 
-Head 3: Quan hệ vị trí
+Head 3: Thông tin vị trí
 
-Head 4: Kết hợp tổng hợp
+Head 4: Tổng hợp ngữ cảnh
+
+Điều này giúp mô hình hiểu sâu hơn về cấu trúc ngôn ngữ và ý nghĩa toàn cục.
 
 3. Positional Encoding
-Vì Transformer không có RNN nên cần cung cấp thông tin vị trí:
 
-python
-PE(pos, 2i) = sin(pos / 10000^(2i/d_model))
-PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
-Ví dụ với d_model=4:
+Vì Transformer không dùng RNN nên cần bổ sung thông tin thứ tự vị trí cho từng token.
+Positional Encoding được tính bằng các hàm sin và cos ở các tần số khác nhau, đảm bảo mô hình phân biệt được thứ tự các từ trong câu.
 
-text
-Vị trí 0: [sin(0), cos(0), sin(0/100), cos(0/100)]
-Vị trí 1: [sin(1), cos(1), sin(1/100), cos(1/100)]
 4. Encoder Stack
-Mỗi encoder layer gồm:
 
-text
-Input → Multi-Head Attention → Add & Norm → Feed Forward → Add & Norm → Output
-Residual Connection & LayerNorm:
+Mỗi lớp trong encoder gồm hai khối chính:
 
-python
-# Sub-layer 1: Self-Attention
-x = x + LayerNorm(MultiHeadAttention(x))
-
-# Sub-layer 2: Feed Forward  
-x = x + LayerNorm(FFN(x))
-5. Decoder Stack
-Decoder có 3 sub-layers:
-
-Masked Self-Attention: Chỉ nhìn thấy các token trước đó
-
-Encoder-Decoder Attention: Kết hợp thông tin từ encoder
+Multi-Head Self-Attention
 
 Feed Forward Network
 
-Masking trong decoder:
+Mỗi khối đều có Residual Connection và Layer Normalization, giúp ổn định gradient và cải thiện khả năng hội tụ của mô hình.
 
-python
-def generate_square_subsequent_mask(sz):
-    mask = torch.triu(torch.ones(sz, sz) * float('-inf'), diagonal=1)
-    return mask
+5. Decoder Stack
 
-# Ví dụ với seq_len=3:
-# [[0, -inf, -inf],
-#  [0,    0, -inf], 
-#  [0,    0,    0]]
+Decoder bao gồm ba thành phần:
+
+Masked Self-Attention: chỉ cho phép mô hình nhìn thấy các từ trước đó khi sinh từ tiếp theo.
+
+Encoder–Decoder Attention: kết hợp thông tin từ encoder để hiểu ngữ cảnh nguồn.
+
+Feed Forward Network: biến đổi đặc trưng phi tuyến tính.
+
+Cơ chế masking được áp dụng để tránh mô hình “nhìn trước” các từ trong tương lai khi dịch.
+
 6. Feed Forward Network
-python
-FFN(x) = max(0, xW₁ + b₁)W₂ + b₂
-Trong code:
 
-python
-dim_feedforward=512  # Mở rộng từ 128 → 512
-activation='relu'    # Non-linearity
+Là mạng hai lớp tuyến tính hoạt động độc lập tại từng vị trí token.
+Giúp mô hình tăng khả năng biểu diễn phi tuyến và học được quan hệ phức tạp giữa các từ.
+
 7. Quá trình Dịch (Inference)
-Autoregressive decoding:
 
-text
-Bước 1: "xin" → Decoder → "chào"
-Bước 2: "xin chào" → Decoder → "bạn"  
-Bước 3: "xin chào bạn" → Decoder → "có"
-...
-Training Results
+Transformer dịch câu theo phương pháp autoregressive — sinh từng từ một, dựa vào các từ đã sinh trước đó.
+Ví dụ:
+
+Bước 1: “xin” → “chào”
+
+Bước 2: “xin chào” → “bạn”
+
+Bước 3: “xin chào bạn” → “có khỏe không”
+
+📊 Kết quả Huấn luyện
+
 Final Training Loss: 0.8670
 
 Final Validation Loss: 0.8911
@@ -104,60 +89,32 @@ Validation Perplexity: 2.44
 
 Best Model: Epoch 19 (val_loss: 0.8843)
 
-Model Parameters: 958,299
+Tổng số tham số: 958,299
 
-Dataset
-20 English-Vietnamese sentence pairs
+📚 Dữ liệu Huấn luyện
 
-Source vocabulary: 72 words
+Số lượng câu song ngữ: 20 cặp câu Anh–Việt
 
-Target vocabulary: 91 words
+Từ vựng nguồn (English): 72 từ
 
-Training Features
-Label smoothing (0.1)
+Từ vựng đích (Vietnamese): 91 từ
 
-Cosine annealing learning rate
+⚙️ Tính năng & Kỹ thuật
 
-AdamW optimizer with weight decay
+Label Smoothing: 0.1
 
-Gradient clipping
+Cosine Annealing Learning Rate
 
-CrossEntropyLoss with padding ignore
+AdamW Optimizer with Weight Decay
 
-Usage
-python
-# Training
-model = ImprovedTransformer(src_vocab_size=72, tgt_vocab_size=91)
-trainer = OptimizedTrainer(model, train_loader, val_loader, device, pad_idx)
-trainer.train(num_epochs=25)
+Gradient Clipping
 
-# Translation
-translator = ImprovedTranslator(model, src_vocab, tgt_vocab, device)
-translation = translator.translate("hello how are you")
-print(translation)  # "xin chào bạn có khỏe không"
-Ưu điểm của Transformer
-Parallelization: Xử lý toàn bộ sequence cùng lúc
+CrossEntropyLoss (bỏ qua padding)
 
-Long-range dependencies: Self-attention nắm bắt phụ thuộc xa
+🚀 Ưu điểm của Transformer
 
-Computational efficiency: Giảm số phép tính so với RNN
+Song song hóa: Xử lý toàn bộ chuỗi cùng lúc, tăng tốc huấn luyện.
 
-Scalability: Dễ dàng mở rộng model size
+Hiểu phụ thuộc dài hạn: Cơ chế Self-Attention giúp mô hình nắm bắt các quan hệ xa trong câu.
 
-Project Structure
-model.py: Transformer implementation
-
-trainer.py: Training logic
-
-translator.py: Inference
-
-data_utils.py: Dataset handling
-
-main.py: Main script
-
-Requirements
-PyTorch
-
-Matplotlib
-
-NumPy
+Hiệu quả tính toán: Giảm độ phức tạp so với RNN truyền thống.
